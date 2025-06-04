@@ -6,7 +6,8 @@ import React, { useEffect, useState } from "react";
 
 export default function BetterSchoolBilling () {
   const [users, setUsers]= useState([])
-  const [form,setForm] = useState({name:"",email:""})
+  const [form, setForm] = useState({ username: "", password_hash: "" });
+
 
    useEffect(() => {
     axios.get(`/api/users`).then((res) => {
@@ -16,10 +17,11 @@ export default function BetterSchoolBilling () {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post(`/api/users`, form).then((res) => {
-      setUsers((prev) => [...prev, res.data]);
-      setForm({ name: "", email: "" });
-    });
+  axios.post(`/api/users`, form).then((res) => {
+  setUsers((prev) => [...prev, res.data]);
+  setForm({ username: "", password_hash: "" });
+});
+
   };
 
   return (
@@ -35,24 +37,28 @@ export default function BetterSchoolBilling () {
 
       <form onSubmit={handleSubmit}>
         <input
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Username"
+          value={form.username}
+          onChange={(e) => setForm({ ...form, username: e.target.value })}
         />
         <input
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          placeholder="Password"
+          type="password"
+          value={form.password_hash}
+          onChange={(e) => setForm({ ...form, password_hash: e.target.value })}
         />
         <button type="submit">Add User</button>
       </form>
 
       <ul>
-        {users.map((user, idx) => (
-          <li key={idx}>
-            {user.name} - {user.email}
-          </li>
-        ))}
+     <ul>
+  {users.map((user, idx) => (
+    <li key={idx}>
+      {user.username} - {user.password_hash}
+    </li>
+  ))}
+</ul>
+
       </ul>
     </div>
   );

@@ -1,27 +1,41 @@
 @echo off
 setlocal enabledelayedexpansion
+title BetterSchool Billing - Launcher
 
+echo -------------------------------------
+echo  BETTERSCHOOL BILLING STARTUP SCRIPT
+echo -------------------------------------
+echo.
+
+REM === Set DB credentials & PORT for portable PostgreSQL
 set DB_USER=postgres
 set DB_NAME=betterschool_billing
-
-echo [INFO] Running BetterSchool Billing Setup...
+set PG_PORT=5433
+set PG_PASSWORD=
 
 REM === Change to script directory
 cd /d "%~dp0"
 
 :password_prompt
-set /p DB_PASS=Enter PostgreSQL password for user '%DB_USER%': 
-set PGPASSWORD=%DB_PASS%
+set /p PG_PASSWORD=Enter PostgreSQL password for user '%DB_USER%': 
+set PGPASSWORD=%PG_PASSWORD%
+set PGPORT=%PG_PORT%
 
-REM === Start PostgreSQL service
-echo [DB] Starting PostgreSQL service...
-net start postgresql-x64-17 >nul 2>&1
-if %errorlevel% equ 2 (
-    echo [DB] PostgreSQL service already running.
-) else if %errorlevel% neq 0 (
-    echo [ERROR] Failed to start PostgreSQL service. Try running as administrator.
-    pause
-    exit /b
+REM === Start Portable PostgreSQL Server manually
+echo [DB] Starting Portable PostgreSQL server...
+
+REM Set paths to your portable PostgreSQL
+set PG_BIN=%~dp0pgsql\bin
+set PG_DATA=%~dp0pgsql\data
+
+REM Check if PG server is already running (on port %PG_PORT%)
+netstat -ano | findstr :%PG_PORT% >nul
+if %errorlevel% equ 0 (
+    echo [DB] PostgreSQL server is already running on port %PG_PORT%.
+) else (
+    echo [DB] Starting PostgreSQL server from %PG_BIN%
+    start "" "%PG_BIN%\pg_ctl.exe" start -D "%PG_DATA%" -o "-p %PG_PORT%" -w
+    timeout /t 5 /nobreak >nul
 )
 
 REM === Change to backend directory

@@ -1,57 +1,83 @@
 from typing import List
-from fastapi import FastAPI, APIRouter, Request
+from fastapi import FastAPI, APIRouter, Request, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 import os
+
 from pydantic import BaseModel
+from models import User as DBUser
+from database import engine, SessionLocal, Base
+
+# Create tables if they don't exist
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# CORS middleware (adjust origins as needed)
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change to your frontend URL in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static files from React build (adjust path to your build directory)
+# Serve React static files
 app.mount("/static", StaticFiles(directory="../frontend/build/static"), name="static")
 
-# Pydantic model for User
-class User(BaseModel):
-    name: str
-    email: str
+# Dependency to get DB session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# In-memory users list
-users: List[User] = []
+# Pydantic models
+class UserCreate(BaseModel):
+    username: str
+    password_hash: str
 
-# Create API router
+class UserRead(BaseModel):
+    id: int
+    username: str
+    password_hash: str
+
+    class Config:
+        orm_mode = True
+
+# Router
 api_router = APIRouter(prefix="/api")
 
 @api_router.get("/hello")
 async def api_hello():
     return {"message": "Hello from FastAPI!"}
 
-@api_router.get("/users", response_model=List[User])
-def get_users():
-    return users
+@api_router.get("/users", response_model=List[UserRead])
+def get_users(db: Session = Depends(get_db)):
+    return db.query(DBUser).all()
 
-@api_router.post("/users", response_model=User)
-def add_user(user: User):
-    users.append(user)
-    return user
+@api_router.post("/users", response_model=UserRead)
+def add_user(user: UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(DBUser).filter(DBUser.username == user.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
 
-# Include API router in main app
+    db_user = DBUser(username=user.username, password_hash=user.password_hash)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+# Register API
 app.include_router(api_router)
 
-# Serve React index.html for all other non-API GET requests
+# Fallback to React app
 @app.get("/{full_path:path}")
 async def serve_react_app(request: Request, full_path: str):
     if request.url.path.startswith("/api/"):
-        # If API route not matched, return 404 JSON
         return JSONResponse({"error": "API endpoint not found"}, status_code=404)
 
     index_path = os.path.abspath("../frontend/build/index.html")
