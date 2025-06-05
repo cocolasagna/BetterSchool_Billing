@@ -7,7 +7,7 @@ DB_NAME = os.getenv("PGDATABASE", "betterschool_billing")
 USER = os.getenv("PGUSER", "postgres")
 PASSWORD = os.getenv("PGPASSWORD", "")
 HOST = os.getenv("PGHOST", "localhost")
-PORT = os.getenv("PGPORT", "5433")  # Match your portable PG port
+PORT = os.getenv("PGPORT", "5433")  
 
 def db_exists():
     try:
